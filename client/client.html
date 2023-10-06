@@ -1,1 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Our simple HTTP server</title>
+    <link rel="stylesheet" type="text/css" href="/style.css">
+    <script>
+      const handleStatus = (statusCode) => {
+      switch(statusCode) {
+        case 200:
+          return `<b>Success</b>`;
+          break;
+        case 201:
+          return '<b>Created</b>';
+          break;
+        case 204:
+          return '<b>Updated (No Content)</b>';
+          return;
+        case 400:
+          return `<b>Bad Request</b>`;
+          break;
+        case 404:
+          return `<b>Not Found</b>`;
+          break;
+        default: 
+          return `Error code not implemented by client.`;
+          break;
+      }
+    }
 
+    const handlePostResponse = async (response) => {
+      console.log("entering client.html > handlePostResponse()");
+      console.log("response" + JSON.stringify(response));
+
+      const content = document.querySelector('#content');
+      
+      content.innerHTML = handleStatus(response.status);
+      //content.innerHTML = response.statusText;
+
+      // parse response to json
+      let obj = await response.json();
+
+      // if we have a message, display it
+      if(obj.message){
+        content.innerHTML += `<p>${obj.message}</p>`
+      }
+    };
+
+      const sendPost = async (nameForm) => {
+      // get input fields
+        const nameAction = nameForm.getAttribute('action');
+        const nameMethod = nameForm.getAttribute('method');
+
+        // get inputted data from fields
+        const userNameField = nameForm.querySelector('#userNameField').value;
+        const albumNameField = nameForm.querySelector('#albumNameField').value;
+        const artistField = nameForm.querySelector('#artistField').value;
+        const albumScoreField = nameForm.querySelector('#albumScoreField').value;
+        const coverArtField = nameForm.querySelector('#coverArtField').value;
+        const spotifyEmbedField = nameForm.querySelector('#spotifyEmbedField').value;
+
+        // format data to FORM-URLENCODED
+        const formData = `name=${userNameField}&album=${albumNameField}&artist=${artistField}&score=${albumScoreField}
+          &cover=${coverArtField}&embed=${spotifyEmbedField}`;
+        //console.log(`testing:${formData}`);
+
+        // perform a fetch and await a response
+        const response = await fetch(nameAction, {
+          method: nameMethod,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: formData,
+        });
+
+        //Once we have a response, handle it.
+        handlePostResponse(response);
+      };
+
+      const sendFetch = async (e) => {
+        e.preventDefault();
+
+        const url = document.getElementById('urlField').value;
+        const method = document.getElementById('methodSelect').value;
+
+        const response = await fetch(url, {method: method});
+
+        handleGetHeadResponse(response);
+      }
+
+      const init = () => {
+      const nameForm = document.querySelector('#uploadForm');
+      
+
+      const uploadAlbum = (e) => {
+        e.preventDefault();
+        sendPost(nameForm);
+        return false;
+      }
+      
+      nameForm.addEventListener('submit', uploadAlbum);
+    };
+
+    window.onload = init;
+    </script>
+</head>
+<body>
+    <section id="top">
+        <h3>Upload Album</h3>
+        <form id="uploadForm" action="/addAlbum" method="post">
+          <label for="userName">User: </label>
+          <input id="userNameField" type="text" name="userName" />
+          <label for="albumName">Album: </label>
+          <input id="albumNameField" type="text" name="albumName" />
+          <label for="artist">Artist: </label>
+          <input id="artistField" type="text" name="artist" />
+          <label for="albumScore">Rating: </label>
+          <input id="albumScoreField" type="number" max="5" min="1" name="albumScore" value="1"/>
+          <br>
+          <label for="coverArt">Cover Art (url): </label>
+          <input id="coverArtField" type="text" name="coverArt" />
+          <label for="spotifyEmbed">Favorite Track (embed): </label>
+          <input id="spotifyEmbedField" type="text" name="spotifyEmbed" />
+          <input type="submit" value="Upload" />
+        </form>
+        <h3>See Collection</h3>
+        <form id="userForm" action="/getUsers" method="get">
+          <label for="userNameGet">User Name: </label>
+          <input id="userNameGetField" type="text" name="userNameGet" />
+          <input type="submit" value="View User's Collection" />
+        </form>
+      </section>
+      <section id="content">
+      </section>
+</body>
+</html>
