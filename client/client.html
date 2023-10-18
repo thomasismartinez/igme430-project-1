@@ -1,52 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Our simple HTTP server</title>
+    <title>My Vinyl Collection</title>
     <link rel="stylesheet" type="text/css" href="/style.css">
     <script>
       const handleStatus = (statusCode) => {
-      switch(statusCode) {
-        case 200:
-          return `<b>Success</b>`;
-          break;
-        case 201:
-          return '<b>Created</b>';
-          break;
-        case 204:
-          return '<b>Updated (No Content)</b>';
-          return;
-        case 400:
-          return `<b>Bad Request</b>`;
-          break;
-        case 404:
-          return `<b>Not Found</b>`;
-          break;
-        default: 
-          return `Error code not implemented by client.`;
-          break;
+        switch(statusCode) {
+          case 200:
+            return `<b>Success</b>`;
+            break;
+          case 201:
+            return '<b>Added first album</b>';
+            break;
+          case 204:
+            return '<b>Updated Collection</b>';
+            return;
+          case 400:
+            return `<b>Bad Request</b>`;
+            break;
+          case 404:
+            return `<b>Not Found</b>`;
+            break;
+          default: 
+            return `Error code not implemented by client.`;
+            break;
+        }
       }
-    }
 
-    const handlePostResponse = async (response) => {
-      console.log("entering client.html > handlePostResponse()");
-      console.log("response" + JSON.stringify(response));
+      const handlePostResponse = async (response) => {
+        console.log("entering client.html > handlePostResponse()");
 
-      const content = document.querySelector('#content');
-      
-      content.innerHTML = handleStatus(response.status);
-      //content.innerHTML = response.statusText;
+        const content = document.querySelector('#content');
+        
+        //content.innerHTML = handleStatus(response.status);
+        //content.innerHTML = response.statusText;
 
-      // parse response to json
-      let obj = await response.json();
+        // parse response to json
+        let obj = await response.json();
 
-      // if we have a message, display it
-      if(obj.message){
-        content.innerHTML += `<p>${obj.message}</p>`
+        console.log(JSON.stringify(obj));
+
+        content.innerHTML = `<b>${obj.message}</b>`;
+
+        if(obj.userName && obj.collection){
+          //content.innerHTML += `<h2>${obj.userName}</h1>
+          //  <p>${obj.message}</p>
+          //  <div>${JSON.stringify(obj.collectionJSON)}</div>`;
+          buildCollectionView(obj.userName, obj.collection);
+        }
+      };
+
+      const handleGetHeadResponse = (response) => {
+        console.log(response);
+        
+        const content = document.getElementById('content');
+
+        content.innerHTML = 'Getting User' + handleStatus(response.status);
+        //content.innerHTML = response.statusText;
+
+        console.log(response);
+        response.text().then((resText) => {
+          const messageElement = document.createElement('p');
+          messageElement.textContent = resText;
+
+          // log for debugging
+          console.log('resText: ' + resText);
+
+          // parse JSON
+          const parsedResponse = JSON.parse(resText);
+          messageElement.textContent = parsedResponse.message;
+
+          content.appendChild(messageElement);
+        });
       }
-    };
 
+      // send POST request
       const sendPost = async (nameForm) => {
-      // get input fields
+        // get input fields
         const nameAction = nameForm.getAttribute('action');
         const nameMethod = nameForm.getAttribute('method');
 
@@ -71,26 +101,26 @@
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: formData,
-        });
+        }); 
 
         //Once we have a response, handle it.
         handlePostResponse(response);
       };
 
+      // send GET or HEAD request
       const sendFetch = async (e) => {
-        e.preventDefault();
-
+        // stop from opening in new tab
+        //e.preventDefault();
         const url = document.getElementById('urlField').value;
-        const method = document.getElementById('methodSelect').value;
+        const userName = document.getElementById('userNameGetField').value;
 
-        const response = await fetch(url, {method: method});
-
+        const response = await fetch(url, {method: 'GET', userName: userName});
         handleGetHeadResponse(response);
       }
 
       const init = () => {
       const nameForm = document.querySelector('#uploadForm');
-      
+      const userForm = document.querySelector('#userForm');
 
       const uploadAlbum = (e) => {
         e.preventDefault();
@@ -99,14 +129,61 @@
       }
       
       nameForm.addEventListener('submit', uploadAlbum);
+      //userForm.addEventListener('submit', sendFetch);
+
+      //visual
+      document.getElementById("userFormContainer").style.display = "none";
     };
 
-    window.onload = init;
+      window.onload = init;
+      
+      const buildCollectionView = (name, collection) => {
+        const content = document.getElementById('content');
+        content.innerHTML += `<h2>${name}'s Vinyl Collection</h2>`;
+
+        const table = document.createElement("table");
+        content.appendChild(table);
+        let x = 1;
+        table.innerHTML += `
+          <tr class=otherCol>
+            <th>Cover</th>
+            <th>Album</th>
+            <th>Artist</th>
+            <th>Rating</th>
+            <th>Favorite Track</th>
+          </tr>`;
+        Object.keys(collection).forEach(k => {
+          table.innerHTML += `
+            <tr${ x%2===0 ? ' class=otherCol' : ''}>
+              <td><img src="${collection[k].cover}" width="200"></td>
+              <td>${k}</td>
+              <td>${collection[k].artist}</td>
+              <td>${collection[k].score}/5</td>
+              <td>${collection[k].embed}</td>
+            </tr>`;
+            x++;
+          });
+      }
+      
+      const showUploadForm = () => {
+        document.getElementById("userFormContainer").style.display = "none";
+        document.getElementById("uploadFormContainer").style.display = "block";
+      }
+      const showUserForm = () => {
+        document.getElementById("uploadFormContainer").style.display = "none";
+        document.getElementById("userFormContainer").style.display = "block";
+      }
     </script>
 </head>
 <body>
+  <div id="container">
+    <h1>My Vinyl Collection</h1>
     <section id="top">
-        <h3>Upload Album</h3>
+      <div id="buttonFlex">
+        <h3 onclick="showUploadForm()" id="uploadFormDisplayButton">Upload Album</h3>
+        <h3 onclick="showUserForm()" id="userFormDisplayButton">View User's Collection</h3>
+      </div>
+      <div id="uploadFormContainer">
         <form id="uploadForm" action="/addAlbum" method="post">
           <label for="userName">User: </label>
           <input id="userNameField" type="text" name="userName" />
@@ -116,21 +193,24 @@
           <input id="artistField" type="text" name="artist" />
           <label for="albumScore">Rating: </label>
           <input id="albumScoreField" type="number" max="5" min="1" name="albumScore" value="1"/>
-          <br>
+          <br><br>
           <label for="coverArt">Cover Art (url): </label>
           <input id="coverArtField" type="text" name="coverArt" />
           <label for="spotifyEmbed">Favorite Track (embed): </label>
           <input id="spotifyEmbedField" type="text" name="spotifyEmbed" />
           <input type="submit" value="Upload" />
         </form>
-        <h3>See Collection</h3>
-        <form id="userForm" action="/getUsers" method="get">
+      </div>
+      <div id="userFormContainer">
+        <form id="userForm" action="/getUserCollection" method="get">
           <label for="userNameGet">User Name: </label>
-          <input id="userNameGetField" type="text" name="userNameGet" />
+          <input id="userNameGetField" type="text" name="userNameGet" /> 
           <input type="submit" value="View User's Collection" />
         </form>
+      </div>
       </section>
-      <section id="content">
-      </section>
+      <div id="content">
+    </div>
+  </div>
 </body>
 </html>
